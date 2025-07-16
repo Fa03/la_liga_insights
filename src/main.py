@@ -34,6 +34,8 @@ print(gestionBD.home_advantage())
 
 df_ParaAnalisis = gestionBD.cargar_datos() # metodo está en el modulo GestorBaseDatos
 estadistica = ProcesadorEDA(df_ParaAnalisis)
+
+
 print(estadistica.resumen_descriptivo())
 
 ## Matriz de Corelacion
@@ -73,7 +75,6 @@ graficos.top_n_equipos()
 
 ## Sexto Gráfico
 graficos.barras_tarjetas_faltas()
-
 
 
 
