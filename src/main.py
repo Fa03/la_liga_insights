@@ -12,3 +12,10 @@ gestionBD = CargaDatos('AZUSFA\\FA_LOCALSERVER', 'La_Liga_Insights', 'C:/Users/f
 gestionBD.conectar()
 
 # gestionBD.insertar_datos()  Comentado por que ya si hizo la inserción de datos!
+
+# ====================================
+
+print(gestionBD.get_partido(123))
+print(gestionBD.get_por_equipo("Barcelona"))
+print(gestionBD.get_por_temporada(2024))
+print(gestionBD.home_advantage())

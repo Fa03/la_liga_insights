@@ -3,6 +3,7 @@ import pyodbc
 import os
 import unicodedata
 import numpy as np
+from sqlalchemy import create_engine, text
 
 class CargaDatos:
     def __init__(self, server, database, ruta_csv, tablas):
@@ -11,14 +12,23 @@ class CargaDatos:
         self.ruta_csv = ruta_csv
         self.tablas = tablas
         self.conn = None
-        self.cursor = None
+        self.engine = None
 
     def conectar(self):
-        self.conn = pyodbc.connect(
-            f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={self.server};DATABASE={self.database};Trusted_Connection=yes;'
+        connection_string = (
+            f"mssql+pyodbc://@{self.server}/{self.database}"
+            "?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes"
         )
-        self.cursor = self.conn.cursor()
-        print("✅ Conexión establecida")
+        self.engine = create_engine(connection_string, fast_executemany=True)
+        self.conn = self.engine.connect()
+        print("✅ Conexión establecida con SQLAlchemy")
+
+    # def conectar(self):
+    #     self.conn = pyodbc.connect(
+    #         f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={self.server};DATABASE={self.database};Trusted_Connection=yes;'
+    #     )
+    #     self.cursor = self.conn.cursor()
+    #     print("✅ Conexión establecida")
 
     def cerrar_conexion(self):
         if self.cursor: self.cursor.close()
@@ -39,6 +49,41 @@ class CargaDatos:
                 return value
         return value
 
+    # def insertar_datos(self):
+    #     for tabla in self.tablas:
+    #         archivo = self.ruta_csv
+    #         if not os.path.exists(archivo):
+    #             print(f"⚠️ Archivo no encontrado: {archivo}")
+    #             continue
+    #
+    #         # Read CSV with proper numeric handling
+    #         df = pd.read_csv(archivo, encoding='utf-8-sig', sep=',', decimal='.')
+    #
+    #         # Convert empty strings to None and handle numeric conversions
+    #         df = df.replace(['', 'NULL', 'null'], np.nan)
+    #
+    #         columnas = df.columns.tolist()
+    #         placeholders = ', '.join(['?'] * len(columnas))
+    #         columnas_sql = ', '.join(columnas)
+    #
+    #         print(f"📥 Insertando datos en la tabla: {tabla} ({len(df)} filas)")
+    #
+    #         for _, fila in df.iterrows():
+    #             # Limpiar y convertir valores
+    #             valores = [self.convertirValoresNulos(fila[col]) for col in columnas]
+    #             try:
+    #                 self.cursor.execute(
+    #                     f"INSERT INTO {tabla} ({columnas_sql}) VALUES ({placeholders})",
+    #                     valores
+    #                 )
+    #             except pyodbc.Error as e:
+    #                 print(f"❌ Error insertando fila en {tabla}: {e}")
+    #                 print(f"Valores problemáticos: {valores}")
+    #                 continue
+    #
+    #         self.conn.commit()
+    #         print(f"✅ Datos insertados en {tabla}")
+
     def insertar_datos(self):
         for tabla in self.tablas:
             archivo = self.ruta_csv
@@ -46,30 +91,68 @@ class CargaDatos:
                 print(f"⚠️ Archivo no encontrado: {archivo}")
                 continue
 
-            # Read CSV with proper numeric handling
             df = pd.read_csv(archivo, encoding='utf-8-sig', sep=',', decimal='.')
-            
-            # Convert empty strings to None and handle numeric conversions
             df = df.replace(['', 'NULL', 'null'], np.nan)
-            
+
             columnas = df.columns.tolist()
-            placeholders = ', '.join(['?'] * len(columnas))
             columnas_sql = ', '.join(columnas)
+            placeholders = ', '.join([f":{col}" for col in columnas])  # SQLAlchemy style
 
             print(f"📥 Insertando datos en la tabla: {tabla} ({len(df)} filas)")
 
-            for _, fila in df.iterrows():
-                # Limpiar y convertir valores
-                valores = [self.convertirValoresNulos(fila[col]) for col in columnas]
-                try:
-                    self.cursor.execute(
-                        f"INSERT INTO {tabla} ({columnas_sql}) VALUES ({placeholders})",
-                        valores
-                    )
-                except pyodbc.Error as e:
-                    print(f"❌ Error insertando fila en {tabla}: {e}")
-                    print(f"Valores problemáticos: {valores}")
-                    continue
+            with self.engine.begin() as connection:  # Usa begin() para manejar transacciones automáticamente
+                for _, fila in df.iterrows():
+                    valores = {col: self.convertirValoresNulos(fila[col]) for col in columnas}
+                    try:
+                        statement = text(f"INSERT INTO {tabla} ({columnas_sql}) VALUES ({placeholders})")
+                        connection.execute(statement, valores)
+                    except Exception as e:
+                        print(f"❌ Error insertando fila en {tabla}: {e}")
+                        print(f"Valores problemáticos: {valores}")
+                        continue
 
-            self.conn.commit()
             print(f"✅ Datos insertados en {tabla}")
+
+            # ============================================
+    def get_tabla(self):
+        return self.tablas[0]
+
+    def get_conn(self):
+        return self.conn
+
+    def cargar_datos(self):
+        query = f"SELECT * FROM {self.tablas[0]}"
+        df = pd.read_sql(query, self.conn)
+        print(f"📥 Datos cargados: {df.shape[0]} filas, {df.shape[1]} columnas")
+        return df
+
+
+    def get_partido(self, id_partido):
+        query = text(f"SELECT * FROM {self.tablas[0]} WHERE id_partido = :id")
+        df = pd.read_sql(query, self.conn, params={"id": id_partido})
+        return df
+
+    def get_por_equipo(self, equipo):
+        query = text(f"""
+            SELECT * FROM {self.tablas[0]}
+            WHERE equipo_local = :eq OR equipo_visita = :eq
+        """)
+        df = pd.read_sql(query, self.conn, params={"eq": equipo})
+        return df
+
+    def get_por_temporada(self, temporada):
+        query = text(f"SELECT * FROM {self.tablas[0]} WHERE temporada = :temp")
+        df = pd.read_sql(query, self.conn, params={"temp": temporada})
+        return df
+
+    def home_advantage(self):
+        query = f"""
+            SELECT
+                SUM(CASE WHEN goles_local > goles_visita THEN 1 ELSE 0 END) AS victorias_local,
+                SUM(CASE WHEN goles_local < goles_visita THEN 1 ELSE 0 END) AS victorias_visita,
+                SUM(CASE WHEN goles_local = goles_visita THEN 1 ELSE 0 END) AS empates
+            FROM {self.tablas[0]}
+        """
+        df = pd.read_sql(query, self.conn)
+        # return df.iloc[0].to_dict() # para mostrar en forma de diccionario
+        return df # se muestra el Data Frame
