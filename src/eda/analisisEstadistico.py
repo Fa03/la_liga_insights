@@ -66,3 +66,7 @@ class ProcesadorEDA:
             outliers_count[col] = (z > z_threshold).sum()
 
         return pd.Series(outliers_count).sort_values(ascending=False)
+
+#====================================
+
+    

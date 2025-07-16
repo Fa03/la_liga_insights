@@ -4,9 +4,12 @@ import os
 # Para invocar clases guardadas en otra carpetas
 sys.path.append(os.path.abspath("C:/Users/fab_t/OneDrive/CUC/PrograII/la_liga_insights/src/basedatos/"))
 from GestorBaseDatos import CargaDatos
+
 sys.path.append(os.path.abspath("C:/Users/fab_t/OneDrive/CUC/PrograII/la_liga_insights/src/eda/"))
 from analisisEstadistico import ProcesadorEDA
 
+sys.path.append(os.path.abspath("C:/Users/fab_t/OneDrive/CUC/PrograII/la_liga_insights/src/visuallizacion/"))
+from Graficos import Visualizador
 
 
 # Creación de objeto de la clase CargaDatos
@@ -41,3 +44,17 @@ print(estadistica.distribucion_variable('goles_visita'))
 
 ## Outliers (datos atípicos)
 print(estadistica.detectar_outliers('goles_local'))
+
+# Graficación
+
+## Objeto de la clase Visualizador para mostrar los gráficos
+graficos = Visualizador(estadistica)
+
+## Primer Gráfico
+graficos.graficar_matriz_correlacion()
+
+## Segundo Gráfico
+graficos.graficar_distribucion_variable('goles_visita')
+
+## Tercer Gráfico
+graficos.distribucion_outliers()
