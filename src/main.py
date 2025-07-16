@@ -45,6 +45,12 @@ print(estadistica.distribucion_variable('goles_visita'))
 ## Outliers (datos atípicos)
 print(estadistica.detectar_outliers('goles_local'))
 
+## Para ver la tabla de posiciones para gráfico
+print('Este es el dataframe de tabla posiciones \n',estadistica.tabla_posiciones())
+
+## Para ver DF que se genera para gráfico de tarjetas
+print('Tabla d?\n',estadistica.tarjetas_faltas())
+
 # Graficación
 
 ## Objeto de la clase Visualizador para mostrar los gráficos
@@ -58,3 +64,18 @@ graficos.graficar_distribucion_variable('goles_visita')
 
 ## Tercer Gráfico
 graficos.distribucion_outliers()
+
+## Cuato Gráfico
+graficos.histograma_goles_por_partido()
+
+## Quinto Gráfico
+graficos.top_n_equipos()
+
+## Sexto Gráfico
+graficos.barras_tarjetas_faltas()
+
+
+
+
+
+

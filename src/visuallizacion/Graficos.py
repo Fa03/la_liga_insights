@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+
 
 
 class Visualizador:
@@ -72,18 +74,6 @@ class Visualizador:
         plt.ylabel('Número de equipos')
         plt.show()
 
-    def goles_vs_puntos(self):
-        """
-        Dispersión entre goles a favor y puntos totales.
-        Historia: ¿Convierte goles en puntos o desperdicia su ofensiva?
-        """
-        df_posiciones = self.eda.tabla_posiciones()
-        plt.figure(figsize=(10, 6))
-        sns.scatterplot(x='GF', y='Pts', data=df_posiciones, hue='equipo', s=100)
-        plt.title('Relación entre Goles a Favor y Puntos Obtenidos')
-        plt.xlabel('Goles a favor')
-        plt.ylabel('Puntos')
-        plt.show()
 
     def top_n_equipos(self, n=5):
         """
@@ -99,33 +89,32 @@ class Visualizador:
         plt.ylabel('Equipo')
         plt.show()
 
-    def scatter_efectividad_tiros(self, df_tiros):
-        """
-        Dispersión entre % a puerta y % de goles por tiro.
-        Historia: ¿Qué equipos son más precisos? ¿Hay alguno que genera mucho pero convierte poco?
-        """
-        fig = px.scatter(
-            df_tiros,
-            x='porcentaje_a_puerta',
-            y='porcentaje_goles_por_tiro',
-            size='tiros',
-            color='equipo',
-            text='equipo',
-            title='Efectividad de Tiros: precisión vs conversión'
-        )
-        fig.update_traces(textposition='top center')
-        fig.show()
-
-    def barras_tarjetas_faltas(self, df_tarjetas):
+    def barras_tarjetas_faltas(self):
         """
         Barras comparando amarillas, rojas y faltas.
         Historia: ¿Qué equipo es más agresivo? ¿Hay uno que combine muchas faltas y muchas rojas?
         """
-        df_tarjetas.set_index('equipo')[['amarillas', 'rojas', 'faltas']].plot(
-            kind='bar', figsize=(12, 6), colormap='Set2'
-        )
-        plt.title('Tarjetas y Faltas por Equipo')
+
+        df_tarjetas = self.eda.tarjetas_faltas()
+        df_plot = df_tarjetas.rename(columns={
+            'amarillas_local': 'amarillas',
+            'rojas_local': 'rojas',
+            'faltas_local': 'faltas'
+        })
+
+        df_plot = df_plot.set_index('equipo')[['amarillas', 'rojas', 'faltas']]
+        equipos = df_plot.index
+        ancho_barra = 0.25
+        x = np.arange(len(equipos))
+
+        plt.figure(figsize=(14, 6))
+        plt.bar(x - ancho_barra, df_plot['amarillas'], width=ancho_barra, color='gold', label='Amarillas')
+        plt.bar(x, df_plot['rojas'], width=ancho_barra, color='red', label='Rojas')
+        plt.bar(x + ancho_barra, df_plot['faltas'], width=ancho_barra, color='gray', label='Faltas')
+
+        plt.xticks(x, equipos, rotation=45)
         plt.ylabel('Cantidad')
+        plt.title('Tarjetas y Faltas por Equipo')
+        plt.legend()
+        plt.tight_layout()
         plt.show()
-
-

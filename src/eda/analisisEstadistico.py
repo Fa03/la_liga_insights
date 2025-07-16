@@ -69,4 +69,51 @@ class ProcesadorEDA:
 
 #====================================
 
-    
+    def tabla_posiciones(self):
+        equipos = pd.concat([self.df['equipo_local'], self.df['equipo_visita']]).unique()
+        tabla = pd.DataFrame(index=equipos, columns=['PJ', 'PG', 'PE', 'PP', 'GF', 'GC', 'DG', 'Pts']).fillna(0)
+
+        for _, row in self.df.iterrows():
+            local = row['equipo_local']
+            visita = row['equipo_visita']
+            gl = row['goles_local']
+            gv = row['goles_visita']
+
+            tabla.loc[local, 'PJ'] += 1
+            tabla.loc[visita, 'PJ'] += 1
+
+            tabla.loc[local, 'GF'] += gl
+            tabla.loc[local, 'GC'] += gv
+            tabla.loc[visita, 'GF'] += gv
+            tabla.loc[visita, 'GC'] += gl
+
+            if gl > gv:
+                tabla.loc[local, 'PG'] += 1
+                tabla.loc[visita, 'PP'] += 1
+            elif gl < gv:
+                tabla.loc[visita, 'PG'] += 1
+                tabla.loc[local, 'PP'] += 1
+            else:
+                tabla.loc[local, 'PE'] += 1
+                tabla.loc[visita, 'PE'] += 1
+
+        tabla['DG'] = tabla['GF'] - tabla['GC']
+        tabla['Pts'] = tabla['PG'] * 3 + tabla['PE']
+        tabla = tabla.sort_values(by=['Pts', 'DG', 'GF'], ascending=False).reset_index().rename(
+            columns={'index': 'equipo'})
+        return tabla
+
+    def tarjetas_faltas(self):
+        tarjetas = self.df.groupby(['equipo_local']).agg({
+            'amarillas_local': 'sum',
+            'rojas_local': 'sum',
+            'faltas_local': 'sum'
+        }).add(
+            self.df.groupby(['equipo_visita']).agg({
+                'amarillas_visita': 'sum',
+                'rojas_visita': 'sum',
+                'faltas_visita': 'sum'
+            }), fill_value=0
+        ).reset_index().rename(columns={'equipo_local': 'equipo'})
+
+        return tarjetas
